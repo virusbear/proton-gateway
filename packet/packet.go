@@ -2,8 +2,8 @@ package packet
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"io"
+	"proton-gateway/utils"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func (packet packetImpl) Payload() []byte {
 }
 
 func Read(reader io.Reader) (Packet, error) {
-	mac, err := readHexString(reader, 6)
+	mac, err := utils.ReadMac(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -49,22 +49,4 @@ func Read(reader io.Reader) (Packet, error) {
 		timestamp: time.Now(),
 		payload:   payload,
 	}, err
-}
-
-func readHexString(reader io.Reader, length int) (*string, error) {
-	bytes := make([]byte, length)
-	read := 0
-	for read < length {
-		n, err := reader.Read(bytes[read:])
-		if err != nil {
-			return nil, err
-		}
-		read += n
-	}
-	// _, err := reader.Read(bytes)
-	// if err != nil {
-	// 		return nil, err
-	// }
-	value := hex.EncodeToString(bytes)
-	return &value, nil
 }

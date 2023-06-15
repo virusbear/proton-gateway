@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
 	"proton-gateway/packet"
+	"proton-gateway/utils"
 	"time"
 )
 
@@ -27,6 +28,7 @@ const (
 	CmdAwait        Cmd = 0x42
 	CmdRead         Cmd = 0xc3
 	CmdMessageCount Cmd = 0x24
+	CmdReadMac      Cmd = 0xa5
 )
 
 const (
@@ -60,6 +62,16 @@ func OpenGateway(port string, baudRate int) (Gateway, error) {
 }
 
 func (gw ProtonGateway) Start(handler PacketHandler) error {
+	if err := gw.ensureSynchronized(); err != nil {
+		return err
+	}
+
+	mac, err := gw.mac()
+	if err != nil {
+		return err
+	}
+	log.Infof("Gateway mac address: %s", mac)
+
 	for {
 		if err := gw.ensureSynchronized(); err != nil {
 			return err
@@ -105,6 +117,21 @@ func (gw ProtonGateway) receivePacket() (packet.Packet, error) {
 	}
 
 	return result, nil
+}
+
+func (gw ProtonGateway) mac() (string, error) {
+	if err := gw.synchronize(); err != nil {
+		return "", err
+	}
+
+	var mac *string
+	reader := func() error {
+		var err error
+		mac, err = utils.ReadMac(gw.port)
+		return err
+	}
+	err := gw.execute(CmdReadMac, reader)
+	return *mac, err
 }
 
 func (gw ProtonGateway) await() error {
